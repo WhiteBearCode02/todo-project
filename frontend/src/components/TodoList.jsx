@@ -1,6 +1,4 @@
-import React from "react";
-// [수정] TodoList와 TodoItem은 동일한 components 폴더에 있으므로 상대 경로를 ./ 로 매핑합니다.
-import TodoItem from "./TodoItem";
+import TodoItem from './TodoItem';
 
 /**
  * 할 일 목록 래퍼 컴포넌트 (TodoList)

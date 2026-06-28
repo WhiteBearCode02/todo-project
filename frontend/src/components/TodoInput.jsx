@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 /**
  * 할 일 입력 창 컴포넌트 (TodoInput)

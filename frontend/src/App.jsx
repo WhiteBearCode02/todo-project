@@ -3,54 +3,54 @@ import TodoInput from './components/TodoInput';
 import TodoList from './components/TodoList';
 import './App.css';
 
-/**
- * 프론트엔드 어플리케이션 메인 컴포넌트 (App)
- * 실제 백엔드 API와 비동기 HTTP 통신을 수행하여 데이터의 무결성을 동기화합니다.
- */
 function App() {
-    // 백엔드 데이터베이스로부터 조회해 온 진짜 할 일 목록 상태
     const [todos, setTodos] = useState([]);
-    // 백엔드 API의 베이스 URL 정의 (테스트 환경 포트 5000번)
+    // [보강] 네트워크 로딩 상태를 관리하여 사용자 경험(UX)을 향상시킵니다.
+    const [isLoading, setIsLoading] = useState(false);
     const API_URL = 'http://localhost:5000/api/todos';
 
-    // [Read] 컴포넌트가 처음 화면에 렌더링될 때(Mount) 서버로부터 목록을 가져옵니다.
     useEffect(() => {
         fetchTodos();
     }, []);
 
-    // 전체 목록 로드 비동기 함수
     const fetchTodos = async () => {
+        setIsLoading(true); // 로딩 시작
         try {
             const response = await fetch(API_URL);
-            if (!response.ok) throw new Error('데이터를 가져오는데 실패했습니다.');
+            if (!response.ok) throw new Error('서버로부터 데이터를 가져올 수 없습니다.');
             const data = await response.json();
-            setTodos(data); // 서버에서 받아온 최신 배열 데이터로 상태 업데이트
+            setTodos(data);
         } catch (error) {
-            console.error('Fetch Error:', error);
+            // [보강] 얼럿이나 UI 텍스트를 통해 사용자에게 명확한 에러 상황을 알립니다.
+            alert(`시스템 알림: ${error.message}\n서버 포트(5000) 및 DB 구동 상태를 확인해 주세요.`);
+        } finally {
+            setIsLoading(false); // 로딩 종료
         }
     };
 
-    // [Create] 백엔드 서버에 새로운 할 일을 등록 요청하는 핸들러
     const handleAddTodo = async (title) => {
+        // [보강] 무분별한 공백 문자 등록 방어
+        if (!title || !title.trim()) {
+            alert('올바른 할 일 내용을 입력해 주세요.');
+            return;
+        }
+
         try {
             const response = await fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title }) // JSON 데이터 스트림으로 직렬화하여 송신
+                body: JSON.stringify({ title: title.trim() })
             });
-            if (!response.ok) throw new Error('할 일 추가 실패');
+            if (!response.ok) throw new Error('할 일을 추가하는 중 서버 오류가 발생했습니다.');
             
             const newTodo = await response.json();
-            // 성능 및 사용자 경험(UX) 최적화: 기존 상태 배열 맨 앞에 새로 생성된 객체를 결합
             setTodos([newTodo, ...todos]);
         } catch (error) {
-            console.error('Insert Error:', error);
+            alert(error.message);
         }
     };
 
-    // [Update] 백엔드 서버에 특정 항목의 완료 상태 토글을 요청하는 핸들러
     const handleToggleTodo = async (id) => {
-        // 토글할 아이템을 현재 상태에서 찾습니다.
         const targetTodo = todos.find(todo => todo._id === id);
         if (!targetTodo) return;
 
@@ -58,30 +58,30 @@ function App() {
             const response = await fetch(`${API_URL}/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ isCompleted: !targetTodo.isCompleted }) // 반대 상태로 전송
+                body: JSON.stringify({ isCompleted: !targetTodo.isCompleted })
             });
-            if (!response.ok) throw new Error('상태 변경 실패');
+            if (!response.ok) throw new Error('상태 변경에 실패했습니다.');
 
             const updatedTodo = await response.json();
-            // 화면의 상태 배열 중 매핑되는 객체만 서버에서 응답받은 최신 객체로 교체
             setTodos(todos.map(todo => todo._id === id ? updatedTodo : todo));
         } catch (error) {
-            console.error('Update Error:', error);
+            alert(error.message);
         }
     };
 
-    // [Delete] 백엔드 서버에 특정 항목의 데이터 영구 삭제를 요청하는 핸들러
     const handleValueDelete = async (id) => {
+        // [보강] 의도치 않은 클릭으로 인한 데이터 유실 방지를 위해 사용자 컨펌창 추가
+        if (!confirm('정말로 이 할 일을 삭제하시겠습니까?')) return;
+
         try {
             const response = await fetch(`${API_URL}/${id}`, {
                 method: 'DELETE'
             });
-            if (!response.ok) throw new Error('할 일 삭제 실패');
+            if (!response.ok) throw new Error('삭제 처리 중 오류가 발생했습니다.');
 
-            // 성공 시, 내 내부 상태(State)에서도 filter를 사용하여 해당 아이템을 제거하여 화면 동기화
             setTodos(todos.filter(todo => todo._id !== id));
         } catch (error) {
-            console.error('Delete Error:', error);
+            alert(error.message);
         }
     };
 
@@ -89,16 +89,23 @@ function App() {
         <div className="app-container">
             <header className="app-header">
                 <h1>My To-Do List</h1>
-                <p>풀스택 아키텍처 연동 완료 기반 실시간 일정 관리 시스템</p>
+                <p>안정성 보강 단계 완료 기반 실시간 일정 관리 시스템</p>
             </header>
             
             <main className="app-content">
                 <TodoInput onAdd={handleAddTodo} />
-                <TodoList 
-                    todos={todos} 
-                    onToggle={handleToggleTodo} 
-                    onDelete={handleValueDelete} 
-                />
+                
+                {/* [보강] 데이터 조건부 렌더링을 통한 로딩 상태 UI 표출 */}
+                {isLoading ? (
+                    <p className="loading-text">데이터를 안전하게 불러오는 중입니다...</p>
+                ) : (
+                    <TodoList 
+                        todos={todos} 
+                        onToggle={handleToggleTodo} 
+                        // 변수 네이밍 컨벤션을 통일성 있게 매핑
+                        onDelete={handleValueDelete} 
+                    />
+                )}
             </main>
         </div>
     );
